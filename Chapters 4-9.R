@@ -163,6 +163,54 @@ lm_wflow <-
 lm_wflow
 
 
-# 7.4 - How Does a workflow() use the formula? ----------------------------
+# 7.6 - Evaluating the Test Set ----------------------------
 
+final_lm_res <- last_fit(lm_wflow, ames_split)
+final_lm_res
+
+fitted_lm_wflow <- extract_workflow(final_lm_res)
+collect_metrics(final_lm_res)
+collect_predictions(final_lm_res) |>
+  slice(1:5)
+
+library(tidymodels)
+data(ames)
+
+ames <- mutate(ames, Sale_Price = log10(Sale_Price))
+
+set.seed(502)
+ames_split <- initial_split(ames, prop = 0.80, strata = Sale_Price)
+ames_train <- training(ames_split)
+ames_test  <-  testing(ames_split)
+
+lm_model <- linear_reg() %>% set_engine("lm")
+
+lm_wflow <- 
+  workflow() %>% 
+  add_model(lm_model) %>% 
+  add_variables(outcome = Sale_Price, predictors = c(Longitude, Latitude))
+
+lm_fit <- fit(lm_wflow, ames_train)
+
+# Chapter 8 - Feature Engineering with Recipes ----------------------------
+
+
+# 8.1 - A Simple Recipe() for the Ames housing data -----------------------
+
+lm(Sale_Price ~ Neighborhood + log10(Gr_Liv_Area) + Year_Built + Bldg_Type, data = ames)
+
+
+# 8.2 - Using Recipes -----------------------------------------------------
+simple_ames <- 
+  recipe(Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type,
+         data = ames_train) %>%
+  step_log(Gr_Liv_Area, base = 10) %>% 
+  step_dummy(all_nominal_predictors())
+lm_wflow <- lm_wflow |>
+  remove_variables() |>
+  add_recipe(simple_ames)
+
+lm_wflow
+lm_fit <- fit(lm_wflow, ames_train)
+predict(lm_fit, ames_test |> slice(1:3))
 
